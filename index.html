@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1747BB">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Phase 10">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
 <title>Phase 10 – Punktetafel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -34,6 +40,7 @@
       linear-gradient(170deg, #2E6FE8 0%, #1747BB 48%, #0C2C86 100%);
     background-attachment:fixed;
     color:#fff; font-family:'Nunito',system-ui,sans-serif;
+    padding-top:env(safe-area-inset-top);
   }
   button{ touch-action:manipulation; -webkit-user-select:none; user-select:none; }
   .disp{ font-family:'Lilita One',sans-serif; font-weight:400; letter-spacing:.015em; }

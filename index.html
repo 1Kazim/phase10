@@ -112,21 +112,68 @@
     text-decoration:underline; cursor:pointer; }
   /* sanfter Screen-Übergang (View Transitions API) */
   ::view-transition-old(root), ::view-transition-new(root){ animation-duration:.22s; }
-  /* größere Screens: mehr Breite, Spielerkarten zweispaltig */
-  @media (min-width:700px){
-    .wrap{ max-width:720px; }
-    .tabbar-inner, .cta-inner{ max-width:720px; }
-    .playerlist{ display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
-    .outgrid{ grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); }
-    .sheet .wrap{ max-width:500px; }
+
+  /* ===== BREITES LAYOUT (iPad / Landscape ab 820px) ===== */
+  @media (min-width:820px){
+    .app-shell{
+      display:grid; grid-template-columns:236px 1fr;
+      min-height:100vh; align-items:stretch;
+    }
+    .sidebar{
+      display:flex; flex-direction:column; gap:6px;
+      padding:26px 16px calc(24px + env(safe-area-inset-bottom));
+      padding-left:max(16px, env(safe-area-inset-left));
+      border-right:1.5px solid rgba(255,255,255,.14);
+      background:rgba(9,29,88,.32);
+    }
+    .sidebar .brand{ margin-bottom:22px; padding:0 6px; }
+    .side-tab{
+      display:flex; align-items:center; gap:12px; width:100%;
+      padding:13px 14px; border:none; border-radius:14px; cursor:pointer;
+      background:transparent; color:rgba(255,255,255,.72);
+      font-family:'Nunito',sans-serif; font-weight:800; font-size:15px; text-align:left;
+      transition:background-color .16s ease, color .16s ease;
+    }
+    .side-tab.active{ background:rgba(255,255,255,.16); color:#fff; }
+    .side-tab .em{ font-size:20px; }
+    .content-area{
+      padding:26px clamp(22px,3vw,44px) 44px;
+      padding-right:max(clamp(22px,3vw,44px), env(safe-area-inset-right));
+      overflow-y:auto; max-height:100vh;
+    }
+    .content-area .wrap{ max-width:100%; margin:0; padding:0; }
+    .mobile-only{ display:none !important; }
+    .playerlist{
+      display:grid; gap:16px; align-items:stretch;
+      grid-template-columns:repeat(var(--pcols-wide,2), minmax(0,1fr));
+    }
+    .playerlist .card{ display:flex; flex-direction:column; padding:20px; }
+    .playerlist .card .barslot{ margin-top:auto; padding-top:16px; }
+    .head-actions{ display:flex; gap:10px; align-items:center; }
+    /* Wizard breit: alle Spieler nebeneinander */
+    .sheet .wrap{ max-width:100%; padding:24px clamp(22px,4vw,56px) 40px; }
+    .wizgrid{
+      display:grid; gap:16px; align-items:start;
+      grid-template-columns:repeat(var(--wcols,2), minmax(0,1fr));
+    }
   }
-  /* sehr kleine Geräte */
+  @media (min-width:1180px){
+    .content-area{ padding-left:clamp(30px,4vw,72px); padding-right:clamp(30px,4vw,72px); }
+    .phasegrid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  }
+
+  /* ===== KOMPAKTES LAYOUT (Handy, < 820px) ===== */
+  @media (max-width:819px){
+    .sidebar{ display:none; }
+    .wide-only{ display:none !important; }
+    .phasegrid{ display:flex; flex-direction:column; gap:10px; }
+    .outgrid{ grid-template-columns:1fr 1fr; }
+  }
   @media (max-width:350px){
     .wrap{ padding:0 14px; }
     .grid2{ gap:8px; }
   }
-  /* Querformat mit wenig Höhe */
-  @media (max-height:520px) and (orientation:landscape){
+  @media (max-height:520px) and (orientation:landscape) and (max-width:819px){
     :root{ --tabbar:52px; --fs-pts:34px; }
     .cta{ padding-top:8px; }
     .tab{ flex-direction:row; gap:6px; }
@@ -134,7 +181,7 @@
   @media (prefers-reduced-motion: reduce){
     .confetti{ animation:none; display:none; }
     .fadeup,.toastbox,.overlay{ animation:none; }
-    .btn,.btn:active,.iconbtn:active,.btn-primary:active,.pill,.seg,.tab,.togglecircle{ transition:none; transform:none; }
+    .btn,.btn:active,.iconbtn:active,.btn-primary:active,.pill,.seg,.tab,.side-tab,.togglecircle{ transition:none; transform:none; }
     ::view-transition-old(root), ::view-transition-new(root){ animation:none; }
   }
 </style>
@@ -191,6 +238,9 @@ const ui = {
 };
 let toastTimer = null;
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const wideMQ = window.matchMedia("(min-width:820px)");
+let isWide = wideMQ.matches;
+wideMQ.addEventListener("change", (e)=>{ isWide = e.matches; render(); });
 
 function loadState(){
   try{
@@ -395,15 +445,21 @@ function setupHTML(){
 function gameTabHTML(){
   const ranks=rankMap(game.players);
   const dealer=game.players[game.dealer%game.players.length];
+  const n=game.players.length;
+  const pcols = n<=2?2 : n<=6?2 : 2;          // Handy-Fallback (CSS überschreibt)
+  const wideCols = n<=1?1 : n<=4?2 : n<=6?3 : 4;
   return `<div>
-    <div class="row" style="justify-content:space-between;margin-bottom:20px">
+    <div class="row" style="justify-content:space-between;margin-bottom:20px;gap:12px">
       <div>
         <div class="disp" style="font-size:var(--fs-head);text-shadow:0 2px 0 rgba(8,28,90,.35)">Runde <span style="color:var(--yellow)">${game.rounds.length+1}</span></div>
         <div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.8);margin-top:2px">👑 ${esc(dealer.name)} teilt aus</div>
       </div>
-      <button class="btn btn-ghostblue" style="padding:10px 14px;font-size:14px" onclick="askNewGame()">↺ Neu</button>
+      <div class="head-actions">
+        ${!game.finished?`<button class="btn btn-primary disp wide-only" style="padding:12px 22px;font-size:16px;box-shadow:0 4px 0 var(--yellow-edge)" onclick="openWizard()">＋&nbsp; Runde eintragen</button>`:""}
+        <button class="btn btn-ghostblue" style="padding:10px 14px;font-size:14px" onclick="askNewGame()">↺ Neu</button>
+      </div>
     </div>
-    <div class="playerlist">
+    <div class="playerlist" style="--pcols:${pcols};--pcols-wide:${wideCols}">
       ${game.players.map(p=>{
         const done=p.phaseIdx>=10;
         return `<div class="card" data-key="p${p.id}" style="padding:var(--pad-card)">
@@ -423,7 +479,7 @@ function gameTabHTML(){
               <div class="eyebrow-dark" style="font-size:9px;margin-top:4px">Punkte</div>
             </div>
           </div>
-          ${phaseBar(p.phaseIdx,p.color)}
+          <div class="barslot">${phaseBar(p.phaseIdx,p.color)}</div>
         </div>`;
       }).join("")}
     </div>
@@ -434,7 +490,7 @@ function phasesTabHTML(){
     <div class="disp" style="font-size:var(--fs-head);text-shadow:0 2px 0 rgba(8,28,90,.35)">Phasen</div>
     <div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.78);margin:4px 0 16px">
       ${game.mode==="random"?"Zufallsmix – aufsteigend nach Schwierigkeit":"Klassische Reihenfolge"}</div>
-    <div class="col" style="gap:10px">
+    <div class="phasegrid">
       ${game.phases.map((ph,i)=>{
         const here=game.players.filter(p=>p.phaseIdx===i);
         return `<div class="card row" data-key="ph${i}" style="padding:12px 16px;gap:16px">
@@ -487,7 +543,81 @@ function historyTabHTML(){
 }
 
 /* ---------------- Runden-Assistent ---------------- */
+// Kompakte Eingabekarte für den breiten "Alle auf einmal"-Wizard
+function wizPlayerCardWide(p){
+  const w=ui.wizard;
+  const e=w.entries[p.id];
+  const isOut=w.outId===p.id;
+  const cards=[
+    {label:"1–9",val:5,color:"var(--blue)"},
+    {label:"10–12",val:10,color:"var(--green)"},
+    {label:"Aussetzen",val:game.settings.skip,color:"var(--amber)"},
+    {label:"Joker",val:game.settings.wild,color:"var(--red)"},
+  ];
+  return `<div class="card" data-key="wc${p.id}" style="padding:18px;${isOut?"outline:2.5px solid var(--yellow);outline-offset:-1px;":""}">
+    <div class="row" style="gap:10px;margin-bottom:2px">
+      <span class="dot" style="width:14px;height:14px;background:${p.color}"></span>
+      <span class="disp flex1" style="font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</span>
+      <span class="pill" style="font-size:11px;padding:3px 9px;background:var(--chip);color:var(--muted);flex-shrink:0">Phase ${p.phaseIdx+1}</span>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(game.phases[p.phaseIdx].text)}</div>
+
+    <div class="row" style="gap:8px;margin-bottom:14px">
+      <button class="btn" style="flex:1;padding:11px;font-size:14px;
+        background:${e.completed?"var(--green)":"var(--chip)"};color:${e.completed?"#fff":"var(--muted)"}"
+        onclick="wizToggleCompleted(${p.id})">
+        <span class="togglecircle" style="width:19px;height:19px;background:${e.completed?"rgba(255,255,255,.25)":"#fff"};border:${e.completed?"2px solid transparent":"2px solid #C9D2E6"}">${e.completed?svg(IC.check,12,4):""}</span>
+        Geschafft
+      </button>
+      <button class="btn" style="padding:11px 14px;font-size:13px;
+        background:${isOut?"var(--yellow)":"var(--chip)"};color:var(--navy)"
+        onclick="wizToggleOut(${p.id})" title="Rausgegangen: 0 Punkte + Phase geschafft">Raus</button>
+    </div>
+
+    <div class="row" style="gap:10px;margin-bottom:10px">
+      <button class="btn btn-cardghost" style="width:46px;height:46px;border-radius:14px;flex-shrink:0;opacity:${e.points===0||isOut?".4":"1"}"
+        onclick="wizAdd(${p.id},-5)" ${(e.points===0||isOut)?"disabled":""} aria-label="5 weniger">${svg(IC.minus,22,3)}</button>
+      <div class="flex1 center" style="background:var(--field);border:1.5px solid var(--line);border-radius:14px;padding:2px 0">
+        <span class="disp wizpts" data-pid="${p.id}" style="display:inline-block;font-size:clamp(30px,3.4vw,40px);color:var(--navy);line-height:1.2">${e.points}</span>
+      </div>
+      <button class="btn btn-cardghost" style="width:46px;height:46px;border-radius:14px;flex-shrink:0;opacity:${isOut?".4":"1"}"
+        onclick="wizAdd(${p.id},5)" ${isOut?"disabled":""} aria-label="5 mehr">${svg(IC.plus,22,3)}</button>
+    </div>
+    <div class="grid2" style="gap:8px">
+      ${cards.map(c=>`<button class="row" style="justify-content:space-between;padding:0 12px;height:46px;border-radius:13px;background:#fff;border:2px solid ${c.color};cursor:pointer;transition:transform .06s ease;opacity:${isOut?".45":"1"}"
+        ${isOut?"disabled":""} onclick="wizAdd(${p.id},${c.val})" onpointerdown="this.style.transform='scale(.97)'" onpointerup="this.style.transform=''" onpointerleave="this.style.transform=''">
+        <span class="disp" style="font-size:14px;color:${c.color}">${c.label}</span>
+        <span class="pill" style="font-size:11px;padding:2px 7px;background:${c.color};color:#fff">+${c.val}</span>
+      </button>`).join("")}
+    </div>
+  </div>`;
+}
+
+function wizardWideHTML(){
+  const w=ui.wizard;
+  const n=game.players.length;
+  const wcols = n<=2?2 : n<=4?2 : n<=6?3 : 4;
+  return `<div class="sheet" data-key="wizard">
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px;gap:12px">
+        <div>
+          <div class="disp" style="font-size:var(--fs-title);text-shadow:0 2px 0 rgba(8,28,90,.35)">Runde ${game.rounds.length+1} eintragen</div>
+          <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.82);margin-top:2px">Für jeden Spieler: „Geschafft?“ wählen und Minuspunkte zählen. „Raus“ = 0 Punkte + Phase geschafft.</div>
+        </div>
+        <button class="iconbtn" onclick="wizTryClose()" aria-label="Abbrechen">${svg(IC.x,20)}</button>
+      </div>
+      <div class="wizgrid" style="--wcols:${wcols};margin-top:18px;margin-bottom:24px">
+        ${game.players.map(p=>wizPlayerCardWide(p)).join("")}
+      </div>
+      <div style="max-width:520px;margin:0 auto 8px">
+        <button class="btn btn-primary disp" style="width:100%;padding:16px;font-size:18px" onclick="saveRound()">✓&nbsp; Runde speichern</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 function wizardHTML(){
+  if(isWide) return wizardWideHTML();
   const w=ui.wizard;
   const others=game.players.filter(p=>p.id!==w.outId);
   const label=
@@ -643,19 +773,35 @@ function shellHTML(){
   ];
   const content = ui.tab==="game"?gameTabHTML() : ui.tab==="phases"?phasesTabHTML() : historyTabHTML();
   const showCta = ui.tab==="game" && !game.finished;
+
+  // Sidebar (nur breit sichtbar via CSS, aber immer im DOM für sanften Wechsel)
+  const sidebar = `<aside class="sidebar wide-only" data-key="sidebar">
+    <div class="brand">${logoHTML(26)}</div>
+    ${TABS.map(t=>`<button class="side-tab ${ui.tab===t.id?"active":""}" onclick="setTab('${t.id}')">
+      <span class="em">${t.em}</span>${t.label}</button>`).join("")}
+  </aside>`;
+
+  // Toast: breit unten links im Content, kompakt über der Tab-Bar
+  const toast = ui.toast?`<div class="toastbox" data-key="toast" style="bottom:calc(env(safe-area-inset-bottom) + ${isWide?24:(ui.tab==="game"?"var(--tabbar) + 92px":"var(--tabbar) + 16px")});${isWide?"left:auto;right:24px;max-width:360px;":""}">
+    <div class="card row" style="margin:0 auto;gap:12px;padding:12px 16px">
+      <span style="color:var(--green);display:inline-flex">${svg(IC.check,17,3.5)}</span>
+      <span class="flex1" style="font-size:14px;font-weight:800">${esc(ui.toast.msg)}</span>
+      <button class="linkbtn" style="color:var(--blue);font-size:13px;text-decoration:none" onclick="doUndo()">Rückgängig</button>
+    </div>
+  </div>`:"";
+
   return `
-    <div class="wrap" data-key="main" style="padding-top:20px;padding-bottom:${ui.tab==="game"?"210px":"130px"}">${content}</div>
-    ${showCta?`<div class="cta" data-key="cta" style="bottom:calc(var(--tabbar) + env(safe-area-inset-bottom))"><div class="cta-inner">
+    <div class="app-shell">
+      ${sidebar}
+      <div class="content-area">
+        <div class="wrap" data-key="main" style="padding-top:20px;padding-bottom:${showCta?"140px":"40px"}">${content}</div>
+      </div>
+    </div>
+    ${showCta?`<div class="cta mobile-only" data-key="cta" style="bottom:calc(var(--tabbar) + env(safe-area-inset-bottom))"><div class="cta-inner">
       <button class="btn btn-primary disp" style="width:100%;padding:16px;font-size:18px" onclick="openWizard()">＋&nbsp; Runde eintragen</button>
     </div></div>`:""}
-    ${ui.toast?`<div class="toastbox" data-key="toast" style="bottom:calc(var(--tabbar) + env(safe-area-inset-bottom) + ${ui.tab==="game"?92:16}px)">
-      <div class="card row" style="max-width:440px;margin:0 auto;gap:12px;padding:12px 16px">
-        <span style="color:var(--green);display:inline-flex">${svg(IC.check,17,3.5)}</span>
-        <span class="flex1" style="font-size:14px;font-weight:800">${esc(ui.toast.msg)}</span>
-        <button class="linkbtn" style="color:var(--blue);font-size:13px;text-decoration:none" onclick="doUndo()">Rückgängig</button>
-      </div>
-    </div>`:""}
-    <nav class="tabbar" data-key="tabbar"><div class="tabbar-inner">
+    ${toast}
+    <nav class="tabbar mobile-only" data-key="tabbar"><div class="tabbar-inner">
       ${TABS.map(t=>{
         const a=ui.tab===t.id;
         return `<button class="tab" style="color:${a?"var(--yellow)":"rgba(255,255,255,.62)"}" onclick="setTab('${t.id}')">
@@ -792,17 +938,31 @@ window.wizNext=function(){
   renderT();
 };
 window.wizToggleCompleted=function(id){
-  const e=ui.wizard.entries[id];
+  const w=ui.wizard;
+  const e=w.entries[id];
   e.completed=!e.completed;
-  if(!e.completed) e.out=false;
+  if(!e.completed){ e.out=false; if(w.outId===id) w.outId=null; }
+  render();
+};
+// Breites Layout: "Raus" pro Karte umschalten (0 Punkte + Phase geschafft)
+window.wizToggleOut=function(id){
+  const w=ui.wizard;
+  const e=w.entries[id];
+  if(w.outId===id){ w.outId=null; e.out=false; e.completed=false; }
+  else{
+    if(w.outId!==null && w.entries[w.outId]){ w.entries[w.outId].out=false; }
+    w.outId=id; e.out=true; e.completed=true; e.points=0;
+  }
   render();
 };
 window.wizAdd=function(id,v){
-  const e=ui.wizard.entries[id];
+  const w=ui.wizard;
+  const e=w.entries[id];
+  if(e.out) return;                 // ausgestiegene Spieler bleiben bei 0
   e.points=Math.max(0,Math.min(999,e.points+v));
-  e.out=false;
   render();
-  bump("#wizPts");
+  if(isWide) bump(`.wizpts[data-pid="${id}"]`);
+  else bump("#wizPts");
 };
 window.wizReset=function(id){ ui.wizard.entries[id].points=0; render(); };
 window.wizEdit=function(id){ ui.wizard.view={t:"edit",id}; renderT(); };

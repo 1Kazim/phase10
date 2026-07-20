@@ -1,4 +1,4 @@
-const CACHE = "phase10-v3";
+const CACHE = "phase10-v4";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
